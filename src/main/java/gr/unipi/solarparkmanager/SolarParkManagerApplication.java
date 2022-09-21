@@ -1,13 +1,13 @@
-package com.unipi.thesis;
+package gr.unipi.solarparkmanager;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class SolarParkApplication {
+public class SolarParkManagerApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(SolarParkApplication.class, args);
+        SpringApplication.run(SolarParkManagerApplication.class, args);
     }
 
 }
