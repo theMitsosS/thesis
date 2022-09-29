@@ -1,11 +1,20 @@
 package gr.unipi.solarparkmanager.model.dto;
 
-public class SolarPanel {
+import javax.validation.constraints.NotNull;
 
+public class SolarPanelJson {
     private Integer id;
+
+    @NotNull(message = "Solar facility ID is required")
     private Integer solarFacilityId;
+
+    @NotNull(message = "Solar panel type is required")
     private String type;
+
+    @NotNull(message = "Solar panel serial number is required")
     private String serialNumber;
+
+    @NotNull(message = "Solar panel size is required")
     private Integer size;
 
 

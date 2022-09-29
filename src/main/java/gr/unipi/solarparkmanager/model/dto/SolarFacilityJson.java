@@ -1,18 +1,19 @@
 package gr.unipi.solarparkmanager.model.dto;
 
-import java.util.List;
+import javax.validation.constraints.NotNull;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class SolarFacility {
+public class SolarFacilityJson {
 
     private Integer id;
+    @NotNull(message = "Facility name is required")
     private String name;
+    @NotNull(message = "Facility address is required")
     private String address;
-    private Integer capacity;
+    @NotNull(message = "Facility capacity is required")
+    private Integer totalSolarPanelCapacity;
+    @NotNull(message = "Facility coordinates is required")
     private Coordinates coordinates;
-    private List<SolarPanel> solarPanels;
+
 
     public Integer getId() {
         return id;
@@ -38,12 +39,12 @@ public class SolarFacility {
         this.address = address;
     }
 
-    public Integer getCapacity() {
-        return capacity;
+    public Integer getTotalSolarPanelCapacity() {
+        return totalSolarPanelCapacity;
     }
 
-    public void setCapacity(Integer capacity) {
-        this.capacity = capacity;
+    public void setTotalSolarPanelCapacity(Integer totalSolarPanelCapacity) {
+        this.totalSolarPanelCapacity = totalSolarPanelCapacity;
     }
 
     public Coordinates getCoordinates() {
@@ -52,13 +53,5 @@ public class SolarFacility {
 
     public void setCoordinates(Coordinates coordinates) {
         this.coordinates = coordinates;
-    }
-
-    public List<SolarPanel> getSolarPanels() {
-        return solarPanels;
-    }
-
-    public void setSolarPanels(List<SolarPanel> solarPanels) {
-        this.solarPanels = solarPanels;
     }
 }

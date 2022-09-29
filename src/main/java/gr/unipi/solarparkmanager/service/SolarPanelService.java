@@ -1,20 +1,24 @@
 package gr.unipi.solarparkmanager.service;
 
-import java.util.Optional;
-
-import static gr.unipi.solarparkmanager.util.PanelConverter.convertSolarPanel;
-
-import gr.unipi.solarparkmanager.model.dto.PanelInputData;
-import gr.unipi.solarparkmanager.model.dto.SolarPanel;
+import gr.unipi.solarparkmanager.exception.SolarFacilityNotFoundException;
+import gr.unipi.solarparkmanager.exception.SolarPanelNotFoundException;
+import gr.unipi.solarparkmanager.exception.SolarParkManagerException;
+import gr.unipi.solarparkmanager.model.dto.PanelPerformanceJson;
+import gr.unipi.solarparkmanager.model.dto.SolarPanelJson;
 import gr.unipi.solarparkmanager.model.entity.PanelPerformanceEntity;
 import gr.unipi.solarparkmanager.model.entity.SolarFacilityEntity;
 import gr.unipi.solarparkmanager.model.entity.SolarPanelEntity;
-import gr.unipi.solarparkmanager.model.dto.exception.SolarParkManagerException;
 import gr.unipi.solarparkmanager.repository.PanelPerformanceRepository;
 import gr.unipi.solarparkmanager.repository.SolarFacilityRepository;
 import gr.unipi.solarparkmanager.repository.SolarPanelRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import static gr.unipi.solarparkmanager.util.PanelConverter.*;
 
 @Service
 public class SolarPanelService {
@@ -27,96 +31,84 @@ public class SolarPanelService {
     @Autowired
     private PanelPerformanceRepository panelPerformanceRepository;
 
-    public SolarPanel create(SolarPanel solarPanel) throws SolarParkManagerException {
-        if (solarPanel.getSolarFacilityId() == null) {
-            throw new SolarParkManagerException("solar facility id is null!");
-        }
-        Optional<SolarFacilityEntity> solarFacilityEntityOptional =
-                solarFacilityRepository.findById(solarPanel.getSolarFacilityId());
-        if (!solarFacilityEntityOptional.isPresent()) {
-            throw new SolarParkManagerException("solar facility does not exist!");
-        }
-        Integer panelsInFacility =
-                solarPanelRepository.countFacilityPanels(solarPanel.getSolarFacilityId());
-        if (panelsInFacility >= solarFacilityEntityOptional.get().getCapacity()) {
-            throw new SolarParkManagerException(
-                    "max Capacity for facility " + solarPanel.getSolarFacilityId() + " has been reached");
-        }
-        SolarPanelEntity newSolarPanel = convertSolarPanelEntity(solarPanel);
+    public SolarPanelJson create(SolarPanelJson solarPanelJson) throws SolarParkManagerException, SolarFacilityNotFoundException {
 
+        SolarFacilityEntity entity = validateFacilityWithGivenIdExists(solarPanelJson.getSolarFacilityId());
+        validateCapacityIsNotReached(solarPanelJson.getSolarFacilityId(), entity.getCapacity());
+
+        SolarPanelEntity newSolarPanel = convertSolarPanelEntity(solarPanelJson);
         SolarPanelEntity createdSolarPanelEntity = solarPanelRepository.save(newSolarPanel);
 
-        return convertSolarPanel(createdSolarPanelEntity);
+        return convertToSolarPanelJson(createdSolarPanelEntity);
     }
 
     public void deletePanel(Integer panelId) {
         solarPanelRepository.deleteById(panelId);
     }
 
-    public SolarPanel updateSolarPanel(SolarPanel solarPanel) throws SolarParkManagerException {
-        if (solarPanel.getId() == null) {
-            throw new SolarParkManagerException("solar panel is mandatory");
+    public SolarPanelJson updateSolarPanel(SolarPanelJson solarPanelJson) throws SolarParkManagerException, SolarFacilityNotFoundException, SolarPanelNotFoundException {
+        if (solarPanelJson.getId() == null) {
+            throw new SolarParkManagerException("solar panel ID is mandatory");
         }
-        Optional<SolarPanelEntity> solarPanelEntityOptional = solarPanelRepository.findById(solarPanel.getId());
-        if (!solarPanelEntityOptional.isPresent()) {
-            throw new SolarParkManagerException("solar panel id " + solarPanel.getId() + " not found!");
+
+        SolarPanelEntity solarPanelEntity = validateSolarPanelExists(solarPanelJson.getId());
+
+        //If user updated solar facility ID, do basic checks for the new facility id (if it exists & if max capacity is not reached)
+        if (solarPanelEntity.getSolarFacilityId().intValue() != solarPanelJson.getSolarFacilityId()) {
+            validateFacilityWithGivenIdExists(solarPanelJson.getSolarFacilityId());
+            validateCapacityIsNotReached(solarPanelJson.getSolarFacilityId(), solarPanelEntity.getSolarFacilityId());
         }
-//check if we can update facility id,in case it is required to get updated
-        if (solarPanelEntityOptional.get().getSolarFacilityId().intValue() !=
-                solarPanel.getSolarFacilityId()) {
-            Optional<SolarFacilityEntity> solarFacilityEntityOptional = solarFacilityRepository.findById(solarPanel.getSolarFacilityId());
-            if (!solarFacilityEntityOptional.isPresent()) {
-                throw new SolarParkManagerException("solar facility does not exist!");
-            }
-            Integer panelsInFacility = solarPanelRepository.countFacilityPanels(solarPanel.getSolarFacilityId());
-            if (panelsInFacility >= solarFacilityEntityOptional.get().getCapacity()) {
-                throw new SolarParkManagerException(
-                        "max Capacity for facility " + solarPanel.getSolarFacilityId() + " has been reached");
-            }
-        }
-        SolarPanelEntity updateSolarPanelEntity = convertSolarPanelEntity(solarPanel);
-        updateSolarPanelEntity.setId(solarPanel.getId());
+        SolarPanelEntity updateSolarPanelEntity = convertSolarPanelEntity(solarPanelJson);
+        updateSolarPanelEntity.setId(solarPanelJson.getId());
         SolarPanelEntity updatedSolarPanelEntity = solarPanelRepository.save(updateSolarPanelEntity);
 
-        return convertSolarPanel(updatedSolarPanelEntity);
+        return convertToSolarPanelJson(updatedSolarPanelEntity);
     }
 
-    public SolarPanel getSolarPanelById(Integer panelId) throws SolarParkManagerException {
-        Optional<SolarPanelEntity> solarPanelEntityOptional = solarPanelRepository.findById(panelId);
-        if (!solarPanelEntityOptional.isPresent()) {
-            throw new SolarParkManagerException("solar panel does not exist!");
+    public List<SolarPanelJson> getAll() {
+        List<SolarPanelEntity> solarPanelEntities = solarPanelRepository.findAll();
+        List<SolarPanelJson> results = new ArrayList<>();
+        for (SolarPanelEntity item : solarPanelEntities) {
+            results.add(convertToSolarPanelJson(item));
         }
-        return convertSolarPanel(solarPanelEntityOptional.get());
+        return results;
     }
 
-    public void insertPerformance(PanelInputData panelInputData) throws SolarParkManagerException {
-        if (panelInputData.getId() == null) {
-            throw new SolarParkManagerException("id is mandatory");
+    private void validateCapacityIsNotReached(Integer solarFacilityId, Integer solarFacilityCapacity) throws SolarParkManagerException {
+        Integer totalExistingPanels = solarPanelRepository.countTotalExistingPanelsInAFacility(solarFacilityId);
+        if (totalExistingPanels >= solarFacilityCapacity) {
+            throw new SolarParkManagerException(
+                    "The maximum capacity for facility with ID:" + solarFacilityId + " has been reached!");
         }
-        Optional<SolarPanelEntity> solarPanelEntityOptional = solarPanelRepository.findById(
-                panelInputData.getId());
-        if (!solarPanelEntityOptional.isPresent()) {
-            throw new SolarParkManagerException("solar panel id " + panelInputData.getId() + " not found!");
+    }
+
+    private SolarFacilityEntity validateFacilityWithGivenIdExists(Integer solarFacilityId) throws SolarFacilityNotFoundException {
+        Optional<SolarFacilityEntity> solarFacilityEntityOptional = solarFacilityRepository.findById(solarFacilityId);
+        if (!solarFacilityEntityOptional.isPresent()) {
+            throw new SolarFacilityNotFoundException(solarFacilityId);
         }
-        PanelPerformanceEntity panelPerformanceEntity = convertPanelPerformanceEntity(panelInputData);
+        return solarFacilityEntityOptional.get();
+    }
+
+    public SolarPanelJson getSolarPanelById(Integer panelId) throws SolarPanelNotFoundException {
+        SolarPanelEntity solarPanelEntity = validateSolarPanelExists(panelId);
+        return convertToSolarPanelJson(solarPanelEntity);
+    }
+
+    public void insertSingleDayPerformanceData(PanelPerformanceJson panelPerformanceJson) throws SolarPanelNotFoundException {
+        validateSolarPanelExists(panelPerformanceJson.getPanelId());
+
+        PanelPerformanceEntity panelPerformanceEntity = convertPanelPerformanceEntity(panelPerformanceJson);
         panelPerformanceRepository.save(panelPerformanceEntity);
     }
 
-    private PanelPerformanceEntity convertPanelPerformanceEntity(PanelInputData panelInputData) {
-        PanelPerformanceEntity panelPerformanceEntity = new PanelPerformanceEntity();
-        panelPerformanceEntity.setPanelId(panelInputData.getId());
-        panelPerformanceEntity.setDate(panelInputData.getDate());
-        panelPerformanceEntity.setKwh(panelInputData.getKwh());
-        return panelPerformanceEntity;
+    private SolarPanelEntity validateSolarPanelExists(Integer solarPanelId) throws SolarPanelNotFoundException {
+        Optional<SolarPanelEntity> solarPanelEntityOptional = solarPanelRepository.findById(solarPanelId);
+        if (!solarPanelEntityOptional.isPresent()) {
+            throw new SolarPanelNotFoundException(solarPanelId);
+        }
+        return solarPanelEntityOptional.get();
     }
 
 
-    private SolarPanelEntity convertSolarPanelEntity(SolarPanel solarPanel) {
-        SolarPanelEntity newSolarPanel = new SolarPanelEntity();
-        newSolarPanel.setSolarFacilityId(solarPanel.getSolarFacilityId());
-        newSolarPanel.setSerialNumber(solarPanel.getSerialNumber());
-        newSolarPanel.setSize(solarPanel.getSize());
-        newSolarPanel.setType(solarPanel.getType());
-        return newSolarPanel;
-    }
 }

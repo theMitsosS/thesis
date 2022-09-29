@@ -1,21 +1,19 @@
 package gr.unipi.solarparkmanager.model.entity;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import java.time.LocalDateTime;
+import javax.persistence.*;
+import java.time.LocalDate;
 
 @Entity
-@Table
+//configuration to allow only 1 insertion of panel performance per day.
+@Table(name = "SOLAR_PANEL_PERFORMANCE", uniqueConstraints = @UniqueConstraint(columnNames = {"date", "panelId"}))
 public class PanelPerformanceEntity {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private Integer panelId;
     private Long kwh;
-    private LocalDateTime date;
+    private LocalDate date;
 
     public Integer getId() {
         return id;
@@ -41,11 +39,11 @@ public class PanelPerformanceEntity {
         this.kwh = kwh;
     }
 
-    public LocalDateTime getDate() {
+    public LocalDate getDate() {
         return date;
     }
 
-    public void setDate(LocalDateTime date) {
+    public void setDate(LocalDate date) {
         this.date = date;
     }
 }

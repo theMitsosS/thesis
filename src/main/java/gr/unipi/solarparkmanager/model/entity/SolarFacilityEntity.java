@@ -3,7 +3,7 @@ package gr.unipi.solarparkmanager.model.entity;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "tSolarFacility")
+@Table(name = "SOLAR_FACILITY")
 public class SolarFacilityEntity {
 
     @Id

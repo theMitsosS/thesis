@@ -3,7 +3,7 @@ package gr.unipi.solarparkmanager.model.entity;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "tSolarPanel")
+@Table(name = "SOLAR_PANEL")
 public class SolarPanelEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
